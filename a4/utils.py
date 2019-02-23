@@ -30,9 +30,8 @@ def pad_sents(sents, pad_token):
 
     ### YOUR CODE HERE (~6 Lines)
     max_length = len(max(sents, key=lambda x: len(x)))
-    sents_paded = [[sent[i] if i < len(sent) else pad_token for i in range(max_length)] for sent in sents]
+    sents_padded = [[sent[i] if i < len(sent) else pad_token for i in range(max_length)] for sent in sents]
     ### END YOUR CODE
-
     return sents_padded
 
 
