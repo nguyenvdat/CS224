@@ -15,6 +15,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import copy
 
 def pad_sents_char(sents, char_pad_token):
     """ Pad list of sentences according to the longest sentence in the batch and max_word_length.
@@ -42,7 +43,16 @@ def pad_sents_char(sents, char_pad_token):
     ###     padding and unknown words.
     sents_padded = []
     max_sentence_length = len(max(sents, key=lambda x: len(x)))
-    sents_padded = [[sent[i].ljust(max_word_length, pad_token) if i < len(sent) else ''.ljust(max_word_length, pad_token) for i in range(max_sentence_length)] for sent in sents]
+
+    for sent in sents:
+        sent_list = []
+        for word in sent:
+            word_list = word
+            word_list = word_list + [char_pad_token] * (max_word_length - len(word_list))
+            sent_list.append(word_list)
+        while len(sent_list) < max_sentence_length:
+            sent_list.append([char_pad_token] * max_word_length)
+        sents_padded.append(sent_list)
     return sents_padded
 
     ### END YOUR CODE
