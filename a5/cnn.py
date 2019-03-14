@@ -25,7 +25,6 @@ class CNN(nn.Module):
         # @param x_reshaped: embedding of character in batch of words (word_batch_size, e_char, m_word) (m_word = max length of word)
         # @returns batch of word embedding (word_batch_size, e_word)
         x_conv = self.conv1d(x_reshaped)
-        print(x_conv.size())
         x_conv_out = torch.max(F.relu(x_conv), -1)[0]
         return x_conv_out
 
