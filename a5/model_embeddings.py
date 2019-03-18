@@ -42,11 +42,13 @@ class ModelEmbeddings(nn.Module):
         ### YOUR CODE HERE for part 1j
         pad_token_idx = vocab.char2id['<pad>']
         self.e_word = embed_size
+        self.embed_size = embed_size
         self.e_char = 50
         self.k = 5
         self.dropout_rate = 0.3
         self.embeddings = nn.Embedding(len(vocab.char2id), self.e_char, padding_idx=pad_token_idx)
-
+        self.cnn_model = CNN(self.e_char, self.k, self.e_word)
+        self.highway_model = Highway(self.e_word, self.dropout_rate)
 
         ### END YOUR CODE
 
@@ -66,15 +68,11 @@ class ModelEmbeddings(nn.Module):
 
         ### YOUR CODE HERE for part 1j
         sentence_length, batch_size, max_word_length = input.size()
-        x_padded = input.view(-1, max_word_length)
-        x_emb = self.embeddings(x_padded) # (word_batch_size, m_word, e_char)
+        x_padded = input.contiguous().view(-1, max_word_length)
+        x_emb = self.embeddings(x_padded) # (word_batch_size, max_word_length, e_char)
         x_reshaped = x_emb.transpose(1, 2)
-
-        cnn_model = CNN(self.e_char, self.k, self.e_word)
-        x_conv_out = cnn_model(x_reshaped) # (word_batch_size, e_word)
-
-        highway_model = Highway(self.e_word, self.dropout_rate)
-        x_word_emb = highway_model(x_conv_out) # (word_batch_size, e_word)
+        x_conv_out = self.cnn_model(x_reshaped) # (word_batch_size, e_word)
+        x_word_emb = self.highway_model(x_conv_out) # (word_batch_size, e_word)
         output = x_word_emb.view(sentence_length, batch_size, -1)
         return output
 
