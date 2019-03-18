@@ -50,7 +50,12 @@ class CharDecoder(nn.Module):
         """
         ### YOUR CODE HERE for part 2b
         ### TODO - Implement the forward pass of the character decoder.
-        
+        input_embedded = self.decoderCharEmb(input) # (length, batch, e_char)
+        # output: (length, batch, hidden_size), dec_hidden is tuple each of element has shape (1, batch, hidden_size)
+        output, dec_hidden = self.charDecoder(input_embedded, dec_hidden)
+        s_t = self.char_output_projection(output) # (length, batch, vocab_size)
+        return s_t, dec_hidden
+
         
         ### END YOUR CODE 
 
@@ -68,6 +73,18 @@ class CharDecoder(nn.Module):
         ###
         ### Hint: - Make sure padding characters do not contribute to the cross-entropy loss.
         ###       - char_sequence corresponds to the sequence x_1 ... x_{n+1} from the handout (e.g., <START>,m,u,s,i,c,<END>).
+        length, batch = char_sequence.size()
+        input_seq = char_sequence[0:-1]
+        target_seq = char_sequence[1:]
+        s_t, dec_hidden = self.forward(input_seq, dec_hidden)
+        s_t = s_t.view(-1, len(self.target_vocab.char2id))
+        target_seq = target_seq.view(-1)
+        mask = target_seq != self.target_vocab.char2id['<pad>']
+        ce_loss = nn.CrossEntropyLoss(reduce=False)
+        loss = ce_loss(s_t, target_seq)
+        loss = loss * mask.type(torch.float)
+        loss = torch.sum(loss) # zero out pad position
+        return loss
 
 
         ### END YOUR CODE
