@@ -51,7 +51,8 @@ class CharDecoder(nn.Module):
         ### YOUR CODE HERE for part 2b
         ### TODO - Implement the forward pass of the character decoder.
         input_embedded = self.decoderCharEmb(input) # (length, batch, e_char)
-        # output: (length, batch, hidden_size), dec_hidden is tuple each of element has shape (1, batch, hidden_size)
+        # output: (length, batch, hidden_size)
+        # dec_hidden: tuple each of element has shape (1, batch, hidden_size)
         output, dec_hidden = self.charDecoder(input_embedded, dec_hidden)
         s_t = self.char_output_projection(output) # (length, batch, vocab_size)
         return s_t, dec_hidden
@@ -78,7 +79,7 @@ class CharDecoder(nn.Module):
         target_seq = char_sequence[1:]
         s_t, dec_hidden = self.forward(input_seq, dec_hidden)
         s_t = s_t.view(-1, len(self.target_vocab.char2id))
-        target_seq = target_seq.view(-1)
+        target_seq = target_seq.contiguous().view(-1)
         mask = target_seq != self.target_vocab.char2id['<pad>']
         ce_loss = nn.CrossEntropyLoss(reduce=False)
         loss = ce_loss(s_t, target_seq)
@@ -106,7 +107,24 @@ class CharDecoder(nn.Module):
         ###      - Use torch.tensor(..., device=device) to turn a list of character indices into a tensor.
         ###      - We use curly brackets as start-of-word and end-of-word characters. That is, use the character '{' for <START> and '}' for <END>.
         ###        Their indices are self.target_vocab.start_of_word and self.target_vocab.end_of_word, respectively.
-        
+        _, batch, hidden_size = initialStates[0].size()
+        output_words = ['' for b in range(batch)]
+        is_end = [False for b in range(batch)]
+        current_char_index = self.target_vocab.start_of_word * torch.ones((1, batch), dtype=torch.long, device=device)
+        prev_dec_hidden = initialStates
+        for t in range(max_length):
+            # s_t: (1, batch, vocab_size)
+            # prev_dec_hidden: tuple each has shape (1, batch, hidden_size)
+            s_t, prev_dec_hidden = self.forward(current_char_index, prev_dec_hidden)
+            current_char_index = torch.argmax(s_t, dim=-1) # (1, batch)
+            for b in range(batch):
+                if current_char_index[0, b].item() == self.target_vocab.end_of_word:
+                    is_end[b] = True
+                if not is_end[b]:
+                    output_words[b] += self.target_vocab.id2char[current_char_index[0, b].item()]
+        return output_words
+
+
         
         ### END YOUR CODE
 
