@@ -59,7 +59,9 @@ from vocab import Vocab, VocabEntry
 import torch
 import torch.nn.utils
 import os.path
-
+import subprocess
+from datetime import datetime
+from google.colab import files
 
 def evaluate_ppl(model, dev_data, batch_size=32):
     """ Evaluate perplexity on dev sentences
@@ -122,6 +124,7 @@ def train(args: Dict):
     clip_grad = float(args['--clip-grad'])
     valid_niter = int(args['--valid-niter'])
     log_every = int(args['--log-every'])
+    last_epoch_path = 'last_epoch'
     model_save_path = args['--save-to']
 
     vocab = Vocab.load(args['--vocab'])
@@ -148,16 +151,6 @@ def train(args: Dict):
 
     optimizer = torch.optim.Adam(model.parameters(), lr=float(args['--lr']))
 
-    # load previous model if exists
-    if os.path.exists(model_save_path) and os.path.exists(model_save_path + '.optim'):
-        print('restore parameters of the model')
-        params = torch.load(model_save_path, map_location=lambda storage, loc: storage)
-        model.load_state_dict(params['state_dict'])
-        model = model.to(device)
-
-        print('restore parameters of the optimizers', file=sys.stderr)
-        optimizer.load_state_dict(torch.load(model_save_path + '.optim'))
-
     num_trial = 0
     train_iter = patience = cum_loss = report_loss = cum_tgt_words = report_tgt_words = 0
     cum_examples = report_examples = epoch = valid_num = 0
@@ -165,9 +158,20 @@ def train(args: Dict):
     train_time = begin_time = time.time()
     print('begin Maximum Likelihood training')
 
+    # load previous model if exists
+    if os.path.exists(model_save_path) and os.path.exists(model_save_path + '.optim'):
+        print('restore parameters of the model')
+        params = torch.load(model_save_path, map_location=lambda storage, loc: storage)
+        model.load_state_dict(params['state_dict'])
+        model = model.to(device)
+        print('restore parameters of the optimizers', file=sys.stderr)
+        optimizer.load_state_dict(torch.load(model_save_path + '.optim'))
+        print('load last number of epoch')
+        last_epoch_file = open(last_epoch_path, 'rb')
+        epoch = pickle.load(last_epoch_file)
+
     while True:
         epoch += 1
-
         for src_sents, tgt_sents in batch_iter(train_data, batch_size=train_batch_size, shuffle=True):
             train_iter += 1
 
@@ -236,6 +240,12 @@ def train(args: Dict):
 
                     # also save the optimizers' state
                     torch.save(optimizer.state_dict(), model_save_path + '.optim')
+
+                    # also save the last epoch number
+                    last_epoch_file = open(last_epoch_path,'wb')
+                    pickle.dump(epoch, last_epoch_file)
+                    last_epoch_file.close()
+
                 elif patience < int(args['--patience']):
                     patience += 1
                     print('hit patience %d' % patience, file=sys.stderr)
