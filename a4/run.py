@@ -57,6 +57,7 @@ from vocab import Vocab, VocabEntry
 
 import torch
 import torch.nn.utils
+import os.path
 
 
 def evaluate_ppl(model, dev_data, batch_size=32):
@@ -144,6 +145,14 @@ def train(args: Dict):
     model = model.to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=float(args['--lr']))
+
+    if os.path.exists(model_save_path) and os.path.exists(model_save_path + '.optim'):
+        print('restore parameters of the model')
+        params = torch.load(model_save_path, map_location=lambda storage, loc: storage)
+        model.load_state_dict(params['state_dict'])
+        model = model.to(device)
+        print('restore parameters of the optimizers', file=sys.stderr)
+        optimizer.load_state_dict(torch.load(model_save_path + '.optim'))
 
     num_trial = 0
     train_iter = patience = cum_loss = report_loss = cum_tgt_words = report_tgt_words = 0
