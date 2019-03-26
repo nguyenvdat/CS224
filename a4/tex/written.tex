@@ -1,0 +1,151 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,enumitem,amsmath,amssymb,graphicx}
+\newcommand\numberthis{\addtocounter{equation}{1}\tag{\theequation}}
+\begin{document}
+
+\begin{center}
+{\Large CS224 Winter 2019 Assignment 4}
+
+\begin{tabular}{rl}
+Name: & Dat Nguyen \\
+Date: & 2/26/2019 \\
+\end{tabular}
+\end{center}
+
+By turning in this assignment, I agree by the Stanford honor code and declare
+that all of this is my own work.
+
+\section*{1. Neural Machine Translation with RNNs (45 points)}
+\begin{enumerate}[label=(\alph*)]
+  \addtocounter{enumi}{6}
+  \item The mask set $\mathbf{e}_t$ to $-\infty$ where the corresponding position in the source sentence is 'pad' token. Since $\mathbf{e}_t$ is passed to softmax to produce $\mathbf{a}_t$, this has the effect of ignoring the attention to the 'pad' token in the source sentence. It is necessary to use the mask in this way since we padded all the source sentences to the same length for easy processing and at the same time only want to focus our attention to the actual words of the source sentences.
+  \addtocounter{enumi}{1}
+  \item
+  The model's corpus BLEU score is 22.25.
+  \item
+  Dot product attention does not require the weight matrix $\mathbf{W}$ as in the multiplicative attention so the computing time and memory is lower, however it does not has as much representative power for the interaction between $\mathbf{s}_t$ and $\mathbf{h}_i$ as the multiplicative attention does. \\
+  Multiplicative attention can represent the multiplicative interaction between a dimension of $\mathbf{s}_t$ and every dimension of $\mathbf{h}_i$ because of $\mathbf{W}$ in between; whereas the additive attention can only represent elementwise interaction between $\mathbf{s}_t$ and $\mathbf{h}_i$. However multiplication attention does not allow transformation in $\mathbf{s}_t$ while additive attention does by $\mathbf{W}_1$, so it may gain more representation power there. \\
+  Additive attention allows transformation in both $\mathbf{s}_t$ and $\mathbf{h}_i$ so it has greater representation power than the dot product attention. However it requires more parameters for $\mathbf{W}_1$ and $\mathbf{W}_2$.
+\end{enumerate}
+
+\section*{2. Analyzing NMT Systems (30 points)}
+\begin{enumerate}[label=(\alph*)]
+\item
+\begin{enumerate}[label=\roman*]
+\item
+    \begin{itemize}
+        \item Error: repetition of the word "favorites"
+        \item Reason: the second word "favorites" is correct but since the first "favorite" is generated before that, there is no way to know the second word to alter it to "one".
+        \item Proposed solution: Use bidirectional decoder and decode the whole sentence at once instead of one word at a time.
+    \end{itemize}
+\item
+    \begin{itemize}
+        \item Error: can not capture the meaning of "America's most widely read children's author".
+        \item Reason: it seems that the nmt system is trying to preserve the sentence's structure as in the Spanish source sentence.
+        \item Proposed solution: use bidirectional decoder, and collect more training examples where the source and the reference translation having significant different sentence structure.
+    \end{itemize}
+\item
+    \begin{itemize}
+        \item Error: output \textless unk\textgreater instead of name belonging to unknown words.
+        \item Reason: the system does not have a way to handle unknown word both in source sentence and the generated sentence.
+        \item Proposed solution: add in vocabulary k words reserved for unknown words (for example if k = 5 we might have \textless UNK1\textgreater, \textless UNK2\textgreater, ..., \textless UNK5\textgreater). When processed source sentence, assign the first unknown word to \textless UNK1\textgreater and so on. We then apply the softmax for the extended vocabulary to choose the correct unknowns and output the corresponding words from the source sentence to the generated sentence. 
+    \end{itemize}
+\item
+    \begin{itemize}
+        \item Error: the meaning of "go around the block" is translated incorrectly as "go back to the apple".
+        \item Reason: even though the source sentence contains the word "apple" but it should not be literally translated as it is.
+        \item Proposed solution: collect more training example containing idioms, or unusual, not literal combination of phrases and train the system more on those examples.
+    \end{itemize}
+\item
+    \begin{itemize}
+        \item Error: "the teachers'lounge" is translated incorrectly into "the women's bathroom".
+        \item Reason: our training set may contains more instance of the word "women" than "teacher" so the system may output higher score for "women" in this case.
+        \item Proposed solution: collect more examples with the relevant, mistranslated words and train the system on those examples.
+    \end{itemize}
+\item
+    \begin{itemize}
+        \item Error: "hectares" is translated incorrectly to "acres".
+        \item Reason: "acres" may appears much more frequently than "hectares" in the dataset.
+        \item Proposed solution: collect more training examples which have the source and reference having "hectares" and train the nmt system on those examples.
+    \end{itemize}
+\end{enumerate}
+\item
+\begin{enumerate}[label=\roman*]
+  \item
+  \begin{itemize}  
+    \item Source sentence: Necesita verdad y belleza, y estoy muy felz que hoy se habl mucho de esto.
+    \item Reference sentence: It needs truth and beauty,  and I'm so happy it's been mentioned so much here today.
+    \item NMT's model translation: It needs real and beauty, and I'm very happy that I talked about a lot of this.
+    \item Error: the object of the verb "needs" has to be a noun but "real" is an adjective. In addition "it's been mentioned" is translated wrongly as "I talked about ... this".
+    \item Reason: for the first error it seems that the system does not recognize that object of a verb must not be an adjective. For the second error the system may assume that the first subject of a sentence is likely to appear against in all parts of the sentence.
+    \item Proposed solution: for the first error add more training examples with verb follow by adjective but grammatically correct (ex. the following of that adjective is a noun), also add more sentences with diversity of word form. For the second error, add more training examples in which there are multiple subjects participating in a sentence.
+  \end{itemize}
+  \item 
+  \begin{itemize}  
+    \item Source sentence: No quiero que se detengan demasiado en los detalles de la concepcin, porque si se detienen a pensar en la concepcin en s, no me van a prestar atencin.
+    \item Reference sentence: Now I don't want you to spend too much time imagining the conception,  because if you spend all that time imagining that conception,  you're not going to listen to me.
+    \item NMT's model translation: I don't want you to get too much on the details of conception, because if you stop thinking about the conception.
+    \item Error: the translation is missing the clause after the if "you're not going to listen to me". 
+    \item Reason: it is likely that during training there are many resulting clauses of "if" are placed before it, which may cause the system think appropriate to put a sentence end after the if clause. 
+    \item Proposed solution: add more training data in which the resulting clause of "if" is placed after it.
+  \end{itemize}
+\end{enumerate}
+\item
+\begin{enumerate}[label=\roman*]
+\item
+  Computation of the BLUE scores for $\mathbf{c}_1$
+  \begin{align*}
+    &p_1 = \frac{0 + 1 + 1 + 1 + 0}{5} = 0.6 \\
+    &p_2 = \frac{0 + 1 + 1 + 0}{4} = 0.5 \\
+    &r^* = 4 \\
+    &BP = 1 \\
+    &BLEU = 1 \times \text{exp}\big(0.5 \times \text{log}(0.6) + 0.5 \times \text{log}(0.5) \big) = 0.548\\
+  \end{align*}
+  Computation of the BLUE scores for $\mathbf{c}_2$
+  \begin{align*}
+    &p_1 = \frac{1 + 1 + 0 + 1 + 1}{5} = 0.8 \\
+    &p_2 = \frac{1 + 0 + 0 + 1}{4} = 0.5 \\
+    &r^* = 4 \\
+    &BP = 1 \\
+    &BLEU = 1 \times \text{exp}\big(0.5 \times \text{log}(0.8) + 0.5 \times \text{log}(0.5) \big) = 0.632\\
+  \end{align*}
+  Since the BLUE score for $\mathbf{c}_2$ is larger than that of $\mathbf{c}_1$ it is considered better translation according to the BLEU score. I agree that it is a better translation.
+\item
+  Computation of the BLUE scores for $\mathbf{c}_1$
+  \begin{align*}
+    &p_1 = \frac{0 + 1 + 1 + 1 + 0}{5} = 0.6 \\
+    &p_2 = \frac{0 + 1 + 1 + 0}{4} = 0.5 \\
+    &r^* = 6 \\
+    &BP = e^{1 - \frac{6}{5}} = 0.819 \\
+    &BLEU = 0.819 \times \text{exp}\big(0.5 \times \text{log}(0.6) + 0.5 \times \text{log}(0.5) \big) = 0.449 \\
+  \end{align*}
+  Computation of the BLUE scores for $\mathbf{c}_2$
+  \begin{align*}
+    &p_1 = \frac{1 + 1 + 0 + 0 + 0}{5} = 0.4 \\
+    &p_2 = \frac{1 + 0 + 0 + 0}{4} = 0.25 \\
+    &r^* = 6 \\
+    &BP = e^{1 - \frac{6}{5}} = 0.819 \\
+    &BLEU = 1 \times \text{exp}\big(0.5 \times \text{log}(0.4) + 0.5 \times \text{log}(0.25) \big) = 0.259 \\
+  \end{align*}
+  The $\mathbf{c}_1$ translation now receives higher BLEU score. I do not agree that it is a better translation.
+\item
+  Because candidate translation with higher match of n-grams generally receives higher BLUE scores, if we only have only one reference translation it may result in bias agaisnt this particular reference translation. In particular, good candidate translation but the word ordering or use of word are not consistent with the reference translation will still receive lower score.
+\item
+Advantages of BLUE compared to human evaluation
+\begin{itemize}
+  \item
+  Can evaluate over huge translations automatically.
+  \item
+  Can be used as a more objective benchmark to compare different system since human evaluation tends to vary from person to person.
+\end{itemize}
+Disadvantages of BLUE compared to human evaluation
+\begin{itemize}
+  \item
+  Often not as accurate as human evaluation.
+  \item
+  May require multiple reference translations to give good score which are not always available.
+\end{itemize}
+
+\end{enumerate}
+\end{enumerate}
+\end{document}
