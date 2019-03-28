@@ -12,24 +12,87 @@ Date: & 3/14/2019 \\
 \end{tabular}
 \end{center}
 
-By turning in this assignment, I agree by the Stanford honor code and declare
+By turning in this assignment, I agree by the Stanford honor code and declare 
 that all of this is my own work.
 
 \section*{1. Character-based convolutional encoder for NMT (36 points)}
 \begin{enumerate}[label=(\alph*)]
+  \item 
+  Because we do convolution over characters, we can still get high level of representation for words with just characters of low embedding size.
   \item
+  Total number of parameters in character-based embedding model is
+  \begin{align*}
+  &e_{\text{char}} \times V_{\text{char}} + e_{\text{word}} \times e_{\text{char}} \times k + e_{\text{word}} +  2 \times e_{\text{word}} \times e_{\text{word}} + 2 \times e_{\text{word}} \\
+  =&e_{\text{char}} \times V_{\text{char}} + e_{\text{word}} \times e_{\text{char}} \times k + 2 \times e_{\text{word}} \times e_{\text{word}} + 3 \times e_{\text{word}} 
+  \end{align*}
+  Total number of parameters in word\_based lookup embedding model is
+  \begin{align*}
+  &V_{\text{word}} \times e_{\text{word}}
+  \end{align*}
+  From there we get total parameters for character-based embedding model is 200640 which is 63 times few than 12800000 parameters of word\_based look up embedding model.
+
   \item
+  In NMT task we use word embedding ultimately to encode and decode sentences but not to generate new word. RNN might be inappropriate because it tries to model the order relationship between characters in a word but that relationship may not be necessary to have a good word representation for the upper task. CNN learns the local structure of a word so it might more easily learn good word representation to adapt to the NMT task.
   \item
-  \item
+  In max-pooling the most activated window will be recorded for each filter, so each filter can learn the local structure in a sharper, less noisy way. On the other hand, average-pooling takes into consideration many windows so it may retain more information than max-pooling.
   \addtocounter{enumi}{3}
   \item To check that my implementation of highway network is correct, I printed out and verified the shape of all intermediate layers. In addition, I manually input the weights and biases of $\mathbf{W}_{\text{proj}}$ and $\mathbf{W}_{\text{gate}}$ and compared the final result with the result I got by doing the computation step by step in numpy. I also asserted that the shape of the final output was correct.
   \item
   To check that my implementation of CNN is correct, I printed out and verified the shape of all intermediate layers. In addition, I manually input the weights and biases of $\mathbf{W}$ and compared the final result with the result I got by doing the computation step by step in numpy. I also asserted that the shape of the final output was correct.
 \end{enumerate}
 
-\section*{2.}
+\section*{2.Character-based LSTM decoder for NMT (26 points)}
 \begin{enumerate}[label=(\alph*)]
-  \addtocounter{enumi}{6}
+  \addtocounter{enumi}{5}
+  \item My BLEU score: 24.47
+\end{enumerate}
+
+\section*{3. Analyzing NMT Systems (8 points)}
+\begin{enumerate}[label=(\alph*)]
   \item
+  Of these sis forms, ”traducir” and ”traduce” appear while ”traduzco”, ”traduces”, ”traduzca” and ”traduzcas” do not appear in the vocabulary. The problem with wordbased NMT is that when encoding, the word which does not appear in the vocabulary is treated as UNKNOWN so that causes us lose some semantic information, therefore in decoding we might not be able to output the corresponding word in the target language. The character-aware NMT recognizes a word by the its characters so we do not lose information about that word in encoding. In addition, even if the target vocabulary does not have the appropriate word, character-aware NMT can still output that word because it might have encountered the similar situation in the training process.
+  \item
+  \begin{enumerate}[label=\roman*]
+  \item
+  Most nearest neighbors for words trained by Word2Vec
+  \begin{itemize}
+    \item financial: economic
+    \item neuron: nerve
+    \item Francisco: san
+    \item naturally: occurring
+    \item expectation: norms
+  \end{itemize}
+  \item
+  Most nearest neighbors for words trained by CharCNN
+  \begin{itemize}
+    \item financial: vertical 
+    \item neuron: Newton 
+    \item Francisco: France
+    \item naturally: practically
+    \item expectation: exception 
+  \end{itemize}
+  \item 
+  The similarity modeled by Word2Vec is semantic similarity while similarity between sequence of characters is modeled by CharCNN. Because of the way Word2Vec is trained, frequently occur together words will have low cosine distance, therefore we may expect that similar words will be semantically close. On the other hand, CharCNN does convolution over adjacent characters so it is likely that words having similar sequence of characters will be close.
+  \end{enumerate}
+  \item 
+  \begin{enumerate}[label=\roman*]
+    \item
+    \begin{itemize}
+      \item Source sentence: Mi crculo comenz en los aos '60 en la escuela media, en Stow, Ohio donde yo era el raro de la clase
+      \item Reference translation: My circle began back in the '60s  in high school in Stow, Ohio  where I was the class queer.
+      \item Word-based translation: My circle started in the year \textless unk \textgreater at the middle school, in Ohio -- where I was the rare of the class.
+      \item Char-based translation: My circle started in the '60s in the middle school, in Stanford, Ohio.
+      \item Explanation: This is an acceptable example. In training the system has probably seen similar pattern "'" followed by numbers so it can decode successfully.
+    \end{itemize}
+    
+    \item
+    \begin{itemize}
+      \item Source sentence: Qu opinaremos del hecho de diferir de ellos en slo unos pocos nucletidos?
+      \item Reference translation: What are we to make of the fact  that we differ from them only really by a few nucleotides?
+      \item Word-based translation: What do you find? Of them in just a few \textless unk \textgreater
+      \item Char-based translation: What will we forget about the fact that they are in just a few nuclears?
+      \item Explanation: This is a not acceptable example because "nucletidos" in the Spanish source sentence is translated wrongly as "nuclears". Because words embedding are learned by CNN, in training the system probably see words having similar characters as "nucletidos" translated as "nuclears" so it adapts to the newly seen "nucletidos" this way.
+    \end{itemize}
+  \end{enumerate}
 \end{enumerate}
 \end{document}
